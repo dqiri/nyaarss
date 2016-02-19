@@ -86,6 +86,11 @@ downloader = SchedulerObject("test")
 downloader.add_query(['horriblesubs','Dagashi','Kashi','720p'])
 downloader.update_all()
 downloader.printed()
+downloader.save()
+
+downloader2 = SchedulerObject("test")
+downloader2.load()
+downloader2.printed()
 
 #nyaa_categories = dict()
 #nyaa_categories["All categories"] = "0_0"
