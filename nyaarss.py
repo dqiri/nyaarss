@@ -1,5 +1,6 @@
 import pickle
 import feedparser
+import urllib
 import sys
 
 #DATA STRUCTURE OF NYAA's RSS FEED @ ['entries']
@@ -34,7 +35,7 @@ class SchedulerObject(object):
         """
         self.q_filename = q_filename
         self.q = dict()
-        self.to_download = list()
+        self.to_download = dict()
         self.struct = (self.q, self.to_download)
 
     def save(self):
@@ -46,34 +47,68 @@ class SchedulerObject(object):
             self.q, self.to_download = pickle.load(open(self.q_filename, "rb"))
             print "Load successful from " + self.q_filename
         except EOFError:
-            print "Couldn't load " + self.q_filename
+            print "Couldn't load " + self.q_filename + "PLEASE FIX!?"
+            self.save()
 
     def add_query(self, query):
         qt = tuple(query)
         if qt in self.q:
-            print query+" is already in here! Update?"
+            print repr(query)+" is already in here! Update?"
             return None
         self.q[qt] = dict()
 
-    def update_all(self):
+    def update(self):
         for k,v in self.q.items():
             search = self.nyaa_parser(k)
             for title, link in search:
                 print title + " " + link
                 if title not in v:
-                    v[title] = (0, link)
-                    self.to_download.append((k, title))
+                    v[title] = [0, link]
+                    if title not in self.to_download:
+                        self.to_download[title] = k
+
+    def remove_download(self, title):
+        if title in self.to_download:
+            k = self.to_download[title]
+            #Setting it to "Downloaded"
+            self.q[k][title][0] = 1
+            del self.to_download[title]
+            if title not in self.to_download:
+                print "Successfuly removed "+title
+            else:
+                print "wtf is going on?"
 
     def to_download_printed(self):
-        for k, t in self.to_download:
-            print t
+        for title, url in self.to_download.items():
+            print title
+
+    def download(self, title):
+#Check if title is there
+        if title in self.to_download:
+            k = self.to_download[title]
+#The url is localed in query's title's url
+            url = self.q[k][title][1]
+#Download sequence
+            download_link = urllib.URLopener()
+            download_link.retrieve(url, title+".torrent")
+#Remove from your downloads
+            self.remove_download(title)
+            print "Downloaded "+title+".torrent from "+url
+        else:
+            print "Download failed for "+title
+
+    def download_all(self):
+#Temporary to_download for iterable
+        temp = dict(self.to_download)
+        for title, url in temp.items():
+            self.download(title)
 
     def nyaa_parser(self, termlist):
         terms_q = '+'.join(termlist)
         nyaa_url = "http://www.nyaa.eu/?page=rss&term="
 
         nyaa_feed = feedparser.parse(nyaa_url+terms_q)
-        print nyaa_url+terms_q
+        print "Grabbing RSS feed from " + "nyaa_url+terms_q"
 
         parsed = list()
         for x in nyaa_feed['entries']:
@@ -90,17 +125,15 @@ class SchedulerObject(object):
                 print '\t\t'+repr(vv)
 
 #terms = sys.argv[1:]
-downloader = SchedulerObject("test")
-
+downloader = SchedulerObject("anime.db")
+downloader.load()
 downloader.add_query(['horriblesubs','Dagashi','Kashi','720p'])
-downloader.update_all()
+downloader.update()
 downloader.printed()
 downloader.save()
 downloader.to_download_printed()
-
-downloader2 = SchedulerObject("test")
-downloader2.load()
-downloader2.printed()
+downloader.download_all()
+downloader.save()
 
 #nyaa_categories = dict()
 #nyaa_categories["All categories"] = "0_0"
