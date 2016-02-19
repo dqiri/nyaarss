@@ -34,14 +34,16 @@ class SchedulerObject(object):
         """
         self.q_filename = q_filename
         self.q = dict()
+        self.to_download = list()
+        self.struct = (self.q, self.to_download)
 
     def save(self):
-        pickle.dump(self.q, open(self.q_filename, "wb"))
+        pickle.dump(self.struct, open(self.q_filename, "wb"))
         print "Save success at " + self.q_filename
 
     def load(self):
         try:
-            self.q = pickle.load(self.q_filename, "rb")
+            self.q, self.to_download = pickle.load(open(self.q_filename, "rb"))
             print "Load successful from " + self.q_filename
         except EOFError:
             print "Couldn't load " + self.q_filename
@@ -57,8 +59,14 @@ class SchedulerObject(object):
         for k,v in self.q.items():
             search = self.nyaa_parser(k)
             for title, link in search:
+                print title + " " + link
                 if title not in v:
                     v[title] = (0, link)
+                    self.to_download.append((k, title))
+
+    def to_download_printed(self):
+        for k, t in self.to_download:
+            print t
 
     def nyaa_parser(self, termlist):
         terms_q = '+'.join(termlist)
@@ -75,10 +83,11 @@ class SchedulerObject(object):
         return parsed
 
     def printed(self):
-        for k,v in self.q.items:
+        for k,v in self.q.items():
             print k
-            for status, link in v:
-                print '\t'+str(status)+" "+link
+            for kk, vv in v.items():
+                print '\t'+repr(kk)
+                print '\t\t'+repr(vv)
 
 #terms = sys.argv[1:]
 downloader = SchedulerObject("test")
@@ -87,6 +96,7 @@ downloader.add_query(['horriblesubs','Dagashi','Kashi','720p'])
 downloader.update_all()
 downloader.printed()
 downloader.save()
+downloader.to_download_printed()
 
 downloader2 = SchedulerObject("test")
 downloader2.load()
